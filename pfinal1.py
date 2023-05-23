@@ -2,8 +2,16 @@ import sys
 import subprocess
 import logging
 import pickle
+import network
+import networkconfig
+import eth
+import start
+import delete
+import lista
+import pause
+import crear
 
-s = "vm"
+s = "s"
 lb = "lb"
 n_lb = "1"
 c = "c1"
@@ -39,18 +47,18 @@ try:
 		with open("orden.txt", "wb") as fich:
 			pickle.dump(parametros, fich)
 		# creación de los bridges y asignación de IP
-		subprocess.run(["python3", "network.py", n_bridges, ip_inc, ip_end])
+		network.network(n_bridges, ip_inc, ip_end, lxdbr)
 		# creación de las máquinas virtuales y asignación de su tarjeta al bridge lxdbr0
-		subprocess.run(["python3", "crear.py", s, imagen, parametros])
-		subprocess.run(["python3", "networkconfig.py", s, parametros, ip0])
+		crear.crear(s, imagen, parametros)
+		networkconfig.networkconfig(s, parametros, ip0, n_lb)
 		# creación del balanceador
-		subprocess.run(["python3", "crear.py", lb, imagen, n_lb])
-		subprocess.run(["python3", "eth.py", lb, n_lb])
+		crear.crear(lb, imagen, n_lb)
+		eth.eth(lb, n_lb)
 		# Asignamos las tarjetas del contenedor lb a los bridges lxdbr1 & lxdbr0 y Asignamos sus direcciones IPv4:
-		subprocess.run(["python3", "networkconfig.py", lb, n_bridges, ip_inc, n_lb])
+		networkconfig.networkconfig(lb, n_bridges, ip_inc, n_lb)
 		# creación del cliente y le asignamos al bridge lxdbr1
-		subprocess.run(["python3", "crear.py", c, imagen, n_client]) 
-		subprocess.run(["python3", "networkconfig.py", c, n_client, ip1])
+		crear.crear(c, imagen, n_client) 
+		networkconfig.networkconfig(c, n_client, ip1, n_lb)
 		print("creado!")
 	
 	elif orden == "start":
@@ -58,18 +66,18 @@ try:
 		# iniciamos cada una de las máquinas virtuales ya creadas con el create
 		with open("orden.txt", "rb") as fich:
 			numero = pickle.load(fich)
-		subprocess.run(["python3", orden+".py", s, numero])
-		subprocess.run(["python3", orden+".py", lb, n_lb])
-		subprocess.run(["python3", orden+".py", c, n_client])		
+		start.start(s, numero)
+		start.start(lb, n_lb)
+		start.start(c, n_client)		
 		print("start!")
 
 	elif orden == "list":
 		# listado de las máquinas virtuales
 		with open("orden.txt", "rb") as fich:
 			numero = pickle.load(fich)
-		subprocess.run(["python3", orden+".py", s, numero])
-		subprocess.run(["python3", orden+".py", lb, n_lb])
-		subprocess.run(["python3", orden+".py", c, n_client])	
+		lista.lista(s, numero)
+		lista.lista(lb, n_lb)
+		lista.lista(c, n_client)	
 		subprocess.run(["lxc", orden])
 
 	elif orden == "delete":
@@ -77,9 +85,9 @@ try:
 		# delete de cada uno de las máquinas virtuales ya creadas con el create
 		with open("orden.txt", "rb") as fich:
 			numero = pickle.load(fich)
-		subprocess.run(["python3", orden+".py", s, numero])
-		subprocess.run(["python3", orden+".py", lb, n_lb])
-		subprocess.run(["python3", orden+".py", c, n_client])
+		delete.delete(s, numero)
+		delete.delete(lb, n_lb)
+		delete.delete(c, n_client)
 		for i in range(int(n_bridges)-1):
 			n = i + 1 
 			subprocess.run(["lxc", "network", orden, lxdbr+str(n)])
@@ -88,14 +96,20 @@ try:
 	elif orden == "pause": # esta función pausa todos los contenedores creados al llamarla
 		with open("orden.txt", "rb") as fich:
 			numero = pickle.load(fich)
-		subprocess.run(["python3", orden+".py", s, numero])
-		subprocess.run(["python3", orden+".py", lb, n_lb])
-		subprocess.run(["python3", orden+".py", c, n_client])
+		pause.pause(s, numero)
+		pause.pause(lb, n_lb)
+		pause.pause(c, n_client)
 		print("paused!")
 
 	elif orden == "pauseone": # esta función pausa la mv de valor parametros-1
-		parametros = sys.argv[2]
-		nombre = s + str(int(parametros)-1)
+		var = sys.argv[2]
+		parametros = sys.argv[3]
+		if orden == s:
+			nombre = vm + str(int(parametros)-1)
+		elif parametros == "1":
+			nombre = var
+		else:
+			nombre = var + str(int(parametros)-1)
 		subprocess.run(["lxc", "stop", nombre, "--force"])
 		print("paused "+nombre+"!")
 

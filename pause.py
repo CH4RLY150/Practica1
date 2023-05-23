@@ -1,18 +1,12 @@
 import sys
 import subprocess
-import logging
 
-logging.basicConfig(level=logging.ERROR)
-logger = logging.getLogger(__name__)
 
-try:
-	orden = sys.argv[1]
-	numero = sys.argv[2]
+def pause(orden, numero):
 	for j in range(int(numero)):
+		if numero == "1":
+			nombre = orden
+		else:
 			nombre = orden + str(j)
-			subprocess.run(["lxc", "stop", nombre, "--force"])
-except IndexError:
-	logger.error("IndexError, no se ha introducido ninguna orden en delete.py")
-	#raise
-except KeyboardInterrupt:
-	logger.error("Terminado")
+		subprocess.run(["lxc", "stop", nombre, "--force"])
+
